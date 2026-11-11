@@ -1,0 +1,27 @@
+$ErrorActionPreference = 'Stop'
+$cfg = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${config}')) | ConvertFrom-Json
+$role = $env:SSM_Role
+if ($role -notin @('active','standby')) { throw 'Role invalido; atualizar SSM Agent com suporte ENV_VAR' }
+Import-Module WebAdministration
+if (-not (Test-Path -LiteralPath ('IIS:\AppPools\' + $cfg.pool))) { throw 'Pool inexistente' }
+if ($role -eq 'standby') {
+  foreach ($task in $cfg.tasks) {
+    Disable-ScheduledTask -TaskName $task.name -TaskPath $task.path | Out-Null
+    Stop-ScheduledTask -TaskName $task.name -TaskPath $task.path
+  }
+  foreach ($svc in $cfg.services) {
+    Stop-Service -Name $svc -Force
+    Set-Service -Name $svc -StartupType Manual
+    if ((Get-Service -Name $svc).Status -ne 'Stopped') { throw "Servico nao parou: $svc" }
+  }
+  Set-ItemProperty ('IIS:\AppPools\' + $cfg.pool) -Name autoStart -Value $false
+  if ((Get-WebAppPoolState $cfg.pool).Value -ne 'Stopped') { Stop-WebAppPool $cfg.pool }
+} else {
+  # Mantem autoStart=false e servicos Manual: nao reativar negocio ao reiniciar o antigo principal.
+  Start-Service WAS
+  Start-Service W3SVC
+  foreach ($svc in $cfg.services) { Start-Service -Name $svc }
+  if ((Get-WebAppPoolState $cfg.pool).Value -ne 'Started') { Start-WebAppPool $cfg.pool }
+  foreach ($task in $cfg.tasks) { Enable-ScheduledTask -TaskName $task.name -TaskPath $task.path | Out-Null }
+}
+Write-Output "Role=$role Pool=$($cfg.pool)"

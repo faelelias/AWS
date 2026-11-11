@@ -1,0 +1,18 @@
+name = "newcon-api-hml"
+region = "ca-central-1"
+vpc_id = "vpc-REPLACE"
+subnet_ids = ["subnet-AZ-A", "subnet-AZ-B"]
+instance_ids = {
+  primary = "i-PRIMARY"
+  standby = "i-STANDBY"
+}
+ec2_security_group_ids = ["sg-WEB"]
+sensedia_cidrs = ["10.0.0.0/24"] # Substituir pela origem real, nao pela rede inteira.
+certificate_arn = "arn:aws:acm:ca-central-1:ACCOUNT:certificate/REPLACE"
+health_check_path = "/REPLACE-WITH-EXISTING-READONLY-PATH"
+pool_name = "newcon-pool"
+services = [] # Nomes EXATOS dos servicos de negocio. Lista vazia nao controla nenhum.
+scheduled_tasks = [] # Exemplo: [{ name = "MinhaTarefa", path = "\\Newcon\\" }]
+standby_prepared = false
+accept_overlap_risk = false
+enable_automatic_failover = false
